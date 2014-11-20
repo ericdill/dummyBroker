@@ -11,11 +11,14 @@ event_PV = "XF:23ID-CT{Replay}Val:EventHdr-I"
 
 def header_callback(value, **kw):
     raw_data = kw['char_value']
+    print raw_data
     data = json.loads(raw_data)
     if data.has_key('header'):
         create(header=data['header'])
         print 'Created header entry'
     if data.has_key('event_descriptor'):
+        print '                \n\n\n', data
+        print '\n\n\n here is event descriptor i received', data['event_descriptor']
         create(event_descriptor=data['event_descriptor']) 
         print 'Created event_descriptor entry'    
 
@@ -31,8 +34,8 @@ hdr_pv = epics.PV(header_PV, auto_monitor=True)
 hdr_pv.add_callback(header_callback)
 
 
-hdr_pv = epics.PV(event_PV, auto_monitor=True)
-hdr_pv.add_callback(event_callback)
+#hdr_pv = epics.PV(event_PV, auto_monitor=True)
+#hdr_pv.add_callback(event_callback)
 
 
 
