@@ -14,7 +14,8 @@ while not created:
         s_id = random.randint(0,1000)
         header_dict = compose_header(scan_id=s_id)
         created = True
-    except ValueError:
+    except ValueError as ve:
+        print('value error: {}'.format(ve))
         time.sleep(.5)
         print('.')
 
@@ -29,8 +30,8 @@ while not created:
                                              descriptor_name='scan',
                                              data_keys=data_keys)
         created = True
-    except Exception:
-        # i strongly object to this exception, arman is a jackass
+    except Exception as e:
+        print('exception: {}'.format(e))
         time.sleep(.5)
         print('.')
 create_event_descriptor(desc_dict)
