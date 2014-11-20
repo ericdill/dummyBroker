@@ -34,8 +34,8 @@ hdr_pv = epics.PV(header_PV, auto_monitor=True)
 hdr_pv.add_callback(header_callback)
 
 
-#hdr_pv = epics.PV(event_PV, auto_monitor=True)
-#hdr_pv.add_callback(event_callback)
+hdr_pv = epics.PV(event_PV, auto_monitor=True)
+hdr_pv.add_callback(event_callback)
 
 
 
