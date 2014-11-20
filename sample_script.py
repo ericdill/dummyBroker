@@ -20,11 +20,14 @@ while not created:
 
 create_header(header_dict)
 
-
+data_keys = ['det', 'mtr']
 created = False
 while not created:
     try:
-        desc_dict = compose_event_descriptor(header=header_dict,event_type_id=1, descriptor_name='scan')
+        desc_dict = compose_event_descriptor(header=header_dict,
+                                             event_type_id=1,
+                                             descriptor_name='scan',
+                                             data_keys=data_keys)
         created = True
     except Exception:
         # i strongly object to this exception, arman is a jackass

@@ -34,7 +34,8 @@ def compose_header(scan_id, **kwargs):
     return header
 
 
-def compose_event_descriptor(header, event_type_id, descriptor_name, **kwargs):
+def compose_event_descriptor(header, event_type_id, descriptor_name,
+                             data_keys, **kwargs):
     """
     For valid keys in kwargs, see 'event_descriptor_keys_dict'
     """
@@ -47,10 +48,12 @@ def compose_event_descriptor(header, event_type_id, descriptor_name, **kwargs):
             else:
                 raise TypeError('Given type is not valid for ', key, ' Should be ', header_keys_dict['type'])
         else:
-            raise ValueError("The provided key is invalid for header", key)
+            raise ValueError("The provided key is invalid for event descriptor", key)
     event_descriptor = kwargs
     scan_id = header['scan_id']
     event_descriptor['descriptor_name'] = str(descriptor_name)
+    # might need to validate the data keys
+    event_descriptor['data_keys'] = data_keys
     res = _find(scan_id=scan_id)
     if res:
         pass
@@ -133,52 +136,71 @@ def create_event(event):
 header_keys_dict = dict()
 #TODO: Change to OrderedDict
 
-header_keys_dict["scan_id"] = {"description": "The unique identifier of the run",
-                               "type": int}
+header_keys_dict["scan_id"] = {
+    "description": "The unique identifier of the run",
+    "type": int}
 
-header_keys_dict["owner"] = { "description": "The user name of the person that created the header",
-                              "type": str}
+header_keys_dict["owner"] = {
+    "description": "The user name of the person that created the header",
+    "type": str}
 
-header_keys_dict["start_time"] = { "description": "The start time in utc",
-                                   "type": datetime.datetime}
+header_keys_dict["start_time"] = {
+    "description": "The start time in utc",
+    "type": datetime.datetime}
 
-header_keys_dict["status"] = { "description": 'Run header completion status( In Progress/Complete',
-                               "type": str}
+header_keys_dict["status"] = {
+    "description": 'Run header completion status( In Progress/Complete',
+    "type": str}
 
-header_keys_dict["beamline_id"] = { "description": "Beamline identifiying string",
-                                    "type": str}
+header_keys_dict["beamline_id"] = {
+    "description": "Beamline identifiying string",
+    "type": str}
 
-header_keys_dict["custom"] = { "description": " Additional attribute value fields that can be user defined",
-                               "type": dict}
+header_keys_dict["custom"] = {
+    "description": "Additional attribute value fields that can be user defined",
+    "type": dict}
 
 event_desc_keys_dict = dict()
-event_desc_keys_dict['header'] = { "description": " Run header associated with an event descriptor",
-                                   "type": dict}
+event_desc_keys_dict['header'] = {
+    "description": "Run header associated with an event descriptor",
+    "type": dict}
 
-event_desc_keys_dict['event_type_id'] = { "description": " Run header associated with an event descriptor",
-                                          "type": int}
+event_desc_keys_dict['event_type_id'] = {
+    "description": "Run header associated with an event descriptor",
+    "type": int}
 
-event_desc_keys_dict['type_descriptor'] = { "description": " Additional information regarding event_type_desc",
-                                            "type": dict}
+event_desc_keys_dict['type_descriptor'] = {
+    "description": "Additional information regarding event_type_desc",
+    "type": dict}
+
+event_desc_keys_dict['data_keys'] = {
+    "description": "The data keys that this event descriptor knows about",
+    "type": list}
 
 
 event_keys_dict = dict()
 
-event_keys_dict['header'] = { "description": " Run header associated with an event descriptor",
-                                   "type": dict}
+event_keys_dict['header'] = {
+    "description": " Run header associated with an event descriptor",
+    "type": dict}
 
-event_keys_dict['event_descriptor'] = { "description": "Event descriptor asssociated with a specific event",
-                                             "type": dict}
+event_keys_dict['event_descriptor'] = {
+    "description": "Event descriptor asssociated with a specific event",
+    "type": dict}
 
-event_keys_dict['seq_no'] = { "description": "Sequence number for the event wrt other events",
-                                   "type": int}
+event_keys_dict['seq_no'] = {
+    "description": "Sequence number for the event wrt other events",
+    "type": int}
 
-event_keys_dict['owner'] = { "description": "The user name of the person that created the header",
-                             "type": str}
+event_keys_dict['owner'] = {
+    "description": "The user name of the person that created the header",
+    "type": str}
 
-event_keys_dict['description'] = { "description": "String identifier describing nature of an event",
-                                   "type": str}
+event_keys_dict['description'] = {
+    "description": "String identifier describing nature of an event",
+    "type": str}
 
-event_keys_dict['data'] = { "description": "Data point name-value pair container",
+event_keys_dict['data'] = {
+    "description": "Data point name-value pair container",
     "type": dict}
 
