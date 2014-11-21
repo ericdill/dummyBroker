@@ -7,7 +7,8 @@ import random
 scan_id = random.randint(0,1000)
 header = create_run_header(scan_id=scan_id)
 
-# evet descriptor formatting stuff
+print("run_header: {}".format(header))
+# event descriptor formatting stuff
 data_keys = ['det', 'mtr']
 event_type_id = 1
 event_descriptor_name = 'test scan'
@@ -21,9 +22,7 @@ event_descriptor = create_event_descriptor(
 write_to_hdr_PV(header, event_descriptor)
 
 # event formatting stuff
-description = 'test event'
 data = {'det': 100000, 'mtr': 1}
-event = format_event(header, event_descriptor, description=description,
-                     seq_no=2, data=data)
+event = format_event(header, event_descriptor, seq_no=2, data=data)
 print('event: {}'.format(event))
 write_to_event_PV(event)

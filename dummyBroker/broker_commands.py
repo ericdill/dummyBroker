@@ -1,11 +1,11 @@
 __author__ = 'arkilic'
-import datetime
-from metadataStore.api.collection import find2
-from metadataStore.api.collection import create as _create
-from metadataStore.api.collection import record as _record
+from metadataStore.api.collection import search
+from metadataStore.api.collection import create_header as _create_header
+from metadataStore.api.collection import (create_event_descriptor
+                                          as _create_event_descriptor)
+
 import epics
 import json
-import os
 import six
 import sys
 import time
@@ -14,12 +14,20 @@ header_PV = "XF:23ID-CT{Replay}Val:RunHdr-I"
 event_PV = "XF:23ID-CT{Replay}Val:EventHdr-I"
 
 
-def sleep(sleep_time, error):
-    if error is not None:
-        print('Error might be significant... '
-              '\nCtrl+c to break program execution...\n{}'.format(error))
-    print('sleeping for {}'.format(str(sleep_time)))
-    time.sleep(time)
+def sleep(sleep_time, sleep_msg):
+    """
+    Sleep the thread for `sleep_time` seconds
+    Parameters
+    ----------
+    sleep_time : float
+        Number of seconds to sleep the thread
+    sleep_mst : str, optional
+        String to print to the console along with a sleep timer
+    """
+    if sleep_msg is None:
+        sleep_msg = ""
+    print('Sleeping for {} ms. {}'.format(str(sleep_time*1000), sleep_msg))
+    time.sleep(sleep_time)
 
 def create_event_descriptor(run_header, event_type_id, data_keys,
                             descriptor_name):
@@ -37,30 +45,35 @@ def create_event_descriptor(run_header, event_type_id, data_keys,
     descriptor_name : string
         Textual description of this event_descriptor
     """
+    print('event descriptor data keys: {}'.format(data_keys))
     scan_id = run_header['scan_id']
     event_descriptor = {'scan_id': scan_id,
                         'event_type_id': int(event_type_id),
                         'data_keys': data_keys,
                         'descriptor_name': descriptor_name}
-    while not find2(scan_id=scan_id):
-        res = find2(scan_id=scan_id)
+    while not search(scan_id=scan_id):
+        res = search(scan_id=scan_id)
         sleep(0.5, "Header for scan_id {} not found. Give it a few seconds "
                    "before terminating".format(scan_id))
 
     # create the event descriptor
-    _create(event_descriptor=event_descriptor)
+    _create_event_descriptor(**event_descriptor)
 
     databroker_header = _get_header(scan_id=scan_id)
     found = False
     while not found:
-        search_results = find2(scan_id=scan_id)
+        search_results = search(scan_id=scan_id)
         if not search_results:
             sleep(0.5, "Event descriptor for scan_id {} not found. Give it "
                        "a few seconds before terminating".format(scan_id))
         else:
             found = True
             event_descriptor = search_results['event_descriptors']
-            print('search_results: {}'.format(event_descriptor))
+            for idx, (ev_desc_id, ev_desc) in enumerate(
+                    six.iteritems(event_descriptor)):
+                print('idx: {}\n\tid: {}\n\t contents: {}\n'.format(
+                    idx, ev_desc_id, ev_desc))
+            print('event_descriptor: {}'.format(event_descriptor))
             # make sure that i only found one header
             if len(list(six.iterkeys(event_descriptor))) > 1:
                 raise ValueError("Searching for multiple event descriptors is "
@@ -76,7 +89,7 @@ def create_event_descriptor(run_header, event_type_id, data_keys,
 def _get_header(scan_id):
     found = False
     while not found:
-        databroker_header = find2(scan_id=scan_id)
+        databroker_header = search(scan_id=scan_id)
         if not databroker_header:
             sleep(0.5, "Header for scan_id {} not found. Give it a few seconds "
                        "before terminating".format(scan_id))
@@ -148,21 +161,55 @@ def create_run_header(scan_id, scan_name=None, owner=None, status=None,
     # 'scan_id' collisions occur
     while not created:
         try:
-            _create(header=header)
+            _create_header(**header)
             created = True
         except KeyError as ke:
             if force:
-                header[scan_id] += 1
-                sleep(0.5, None)
+                header['scan_id'] += 1
+                sleep_msg = ('Searching for valid scan number. Current '
+                             'index: {}'.format(header['scan_id']))
+                sleep(0.1, sleep_msg)
             else:
                 six.reraise(KeyError, KeyError(ke), sys.exc_info()[2])
-
+    scan_id = header['scan_id']
     databroker_header = _get_header(scan_id=scan_id)
     # get rid of the ObjectID thing that can't be JSON serialized
     databroker_header['_id'] = str(databroker_header['_id'])
 
     print('databroker_runheader: {}'.format(databroker_header))
     return databroker_header
+
+
+def format_event(header, event_descriptor, seq_no, data):
+    """
+    For valid keys in kwargs, see 'event_keys_dict'
+    """
+    scan_id = header['scan_id']
+    owner = header['owner']
+    # before going to the trouble of formatting an event, make sure that the
+    # header exists
+    res = search(scan_id = scan_id)
+    if not res:
+        raise Exception('Header with given scan_id is not yet created. '
+                        'Something has gone seriously sideways. Current state'
+                        'of this function call...'
+                        '\nheader: {}'
+                        '\nevent_descriptor: {}'
+                        '\ndescription: {}'
+                        '\nseq_no: {}'
+                        '\ndata: {}'.format(header, event_descriptor, seq_no,
+                                            data))
+    # create the event dict
+    event = {'seq_no': seq_no,
+             'data': data,
+             'owner': owner,
+             'scan_id': scan_id,
+             'descriptor_name': event_descriptor['descriptor_name'],
+             'descriptor_id': event_descriptor['_id'],
+             'header_id': header['_id'],
+             }
+
+    return event
 
 
 def write_to_hdr_PV(header, event_descriptor):
@@ -179,39 +226,6 @@ def write_to_hdr_PV(header, event_descriptor):
         raise
 
 
-def format_event(header, event_descriptor, description, seq_no, data):
-    """
-    For valid keys in kwargs, see 'event_keys_dict'
-    """
-    scan_id = header['scan_id']
-    owner = header['owner']
-    # before going to the trouble of formatting an event, make sure that the
-    # header exists
-    res = find2(scan_id = scan_id)
-    if not res:
-        raise Exception('Header with given scan_id is not yet created. '
-                        'Something has gone seriously sideways. Current state'
-                        'of this function call...'
-                        '\nheader: {}'
-                        '\nevent_descriptor: {}'
-                        '\ndescription: {}'
-                        '\nseq_no: {}'
-                        '\ndata: {}'.format(header, event_descriptor,
-                                            description, seq_no, data))
-    # create the event dict
-    event = {'description': description,
-             'seq_no': seq_no,
-             'data': data,
-             'owner': owner,
-             'scan_id': scan_id,
-             'descriptor_name': event_descriptor['descriptor_name'],
-             'descriptor_id': event_descriptor['_id'],
-             'header_id': header['_id'],
-             }
-
-    return event
-
-
 def write_to_event_PV(event):
     event_pv = epics.PV(event_PV)
     try:
@@ -220,21 +234,3 @@ def write_to_event_PV(event):
         event_pv.put(dumped_ev)
     except:
         raise
-
-
-
-
-event_keys_dict = dict()
-
-event_keys_dict['seq_no'] = {
-    "description": "Sequence number for the event wrt other events",
-    "type": int}
-
-event_keys_dict['description'] = {
-    "description": "String identifier describing nature of an event",
-    "type": str}
-
-event_keys_dict['data'] = {
-    "description": "Data point name-value pair container",
-    "type": dict}
-
