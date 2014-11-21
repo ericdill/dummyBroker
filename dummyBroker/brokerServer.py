@@ -41,9 +41,10 @@ def header_callback(value, **kw):
 
         print("{} Event descriptors are present".format(num_ev_desc))
         for idx, ev_desc in enumerate(event_descriptors):
-        print("=============="
-              "\nEvent descriptor {}: {}"
-              "==============".format(idx, ev_desc))
+            print("==============\nEvent descriptor {}: {}\n=============="
+                  "".format(idx, ev_desc))
+    except KeyError as ke:
+        print('No event descriptor present')
 
 
 def event_callback(value, **kw):
