@@ -1,53 +1,29 @@
-from dummyBroker.broker_commands import (compose_header,
-                                         compose_event_descriptor,
-                                         compose_event,
-                                         create_header,
-                                         create_event_descriptor, create_event)
+from dummyBroker.broker_commands import (
+    create_event_descriptor, create_run_header, write_to_event_PV,
+    format_event, write_to_hdr_PV)
 import random
-import epics 
-import time 
 
+# header formatting stuff
+scan_id = random.randint(0,1000)
+header = create_run_header(scan_id=scan_id)
 
-created = False
-while not created:
-    try:
-        s_id = random.randint(0,1000)
-        header_dict = compose_header(scan_id=s_id)
-        created = True
-    except ValueError as ve:
-        print('value error: {}'.format(ve))
-        time.sleep(.5)
-        print('.')
-
-create_header(header_dict)
-
+# evet descriptor formatting stuff
 data_keys = ['det', 'mtr']
-created = False
-while not created:
-    try:
-        desc_dict = compose_event_descriptor(header=header_dict,
-                                             event_type_id=1,
-                                             descriptor_name='scan',
-                                             data_keys=data_keys)
-        created = True
-    except Exception as e:
-        print('exception: {}'.format(e))
-        time.sleep(.5)
-        print('.')
-create_event_descriptor(desc_dict)
+event_type_id = 1
+event_descriptor_name = 'test scan'
 
-# print("sleeping for 3 seconds")
-# time.sleep(3)
+event_descriptor = create_event_descriptor(
+    header, data_keys=data_keys, event_type_id=event_type_id,
+    descriptor_name=event_descriptor_name
+)
 
-created = False
-while not created:
-    try:
-        event = compose_event(header_dict, desc_dict, 2)
-        created = True
-    except Exception:
-        # i strongly object to this exception, arman is a jackass
-        time.sleep(.5)
-        print('.')
+# write the header and event_descriptor to the header PV
+write_to_hdr_PV(header, event_descriptor)
 
+# event formatting stuff
+description = 'test event'
+data = {'det': 100000, 'mtr': 1}
+event = format_event(header, event_descriptor, description=description,
+                     seq_no=2, data=data)
 print('event: {}'.format(event))
-create_event(event)
+write_to_event_PV(event)

@@ -10,17 +10,41 @@ event_PV = "XF:23ID-CT{Replay}Val:EventHdr-I"
 
 
 def header_callback(value, **kw):
+    """
+    Header and event descriptor should already be created by the data
+    broker before they are published to the header PV, as this callback will
+    not create PVs.
+
+    :param value:
+    :param kw:
+    :return:
+    """
     raw_data = kw['char_value']
     print raw_data
     data = json.loads(raw_data)
-    if data.has_key('header'):
-        create(header=data['header'])
-        print 'Created header entry'
-    if data.has_key('event_descriptor'):
-        print '                \n\n\n', data
-        print '\n\n\n here is event descriptor i received', data['event_descriptor']
-        create(event_descriptor=data['event_descriptor']) 
-        print 'Created event_descriptor entry'    
+    try:
+        header = data['header']
+        print("=============="
+              "\nHeader: {}"
+              "==============".format(header))
+    except KeyError as ke:
+        print('No run header present')
+    try:
+        event_descriptors = data['event_descriptors']
+        num_ev_desc = 1
+        if (isinstance(event_descriptors, list)
+            or isinstance(event_descriptors, tuple)):
+            num_ev_desc = len(event_descriptors)
+        else:
+            num_ev_desc = 1
+            event_descriptors = [event_descriptors, ]
+
+        print("{} Event descriptors are present".format(num_ev_desc))
+        for idx, ev_desc in enumerate(event_descriptors):
+        print("=============="
+              "\nEvent descriptor {}: {}"
+              "==============".format(idx, ev_desc))
+
 
 def event_callback(value, **kw):
     raw_data = kw['char_value']
